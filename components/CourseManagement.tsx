@@ -1,28 +1,17 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { CourseCatalogItem, CourseRecord, CourseTransactionType } from '@/types/courses';
+import { CourseRecord, CourseTransactionType } from '@/types/courses';
 import {
   loadCourseStorageData,
   saveCourseRecords,
-  saveCourseCatalog,
   exportCourseRecords,
   importCourseRecords,
 } from '@/utils/courseStorage';
 
 const MONTHS = [
-  'Janeiro',
-  'Fevereiro',
-  'Março',
-  'Abril',
-  'Maio',
-  'Junho',
-  'Julho',
-  'Agosto',
-  'Setembro',
-  'Outubro',
-  'Novembro',
-  'Dezembro',
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ];
 
 type CourseSummary = {
@@ -36,35 +25,30 @@ type CourseSummary = {
 
 function getTransactionLabel(type: CourseTransactionType): string {
   switch (type) {
-    case 'profissional':
-      return 'Profissional';
-    case 'pratica':
-      return 'Prática';
-    case 'paciente_modelo':
-      return 'Paciente Modelo';
-    case 'custo':
-      return 'Custo';
-    default:
-      return type;
+    case 'profissional': return 'Profissional';
+    case 'pratica': return 'Prática';
+    case 'paciente_modelo': return 'Paciente Modelo';
+    case 'custo': return 'Custo';
+    default: return type;
   }
 }
 
 function getCourseSummary(course: CourseRecord): CourseSummary {
   const totalProfissionais = course.transactions
-    .filter((item) => item.type === 'profissional')
-    .reduce((sum, item) => sum + item.amount, 0);
+    .filter((t) => t.type === 'profissional')
+    .reduce((sum, t) => sum + t.amount, 0);
 
   const totalPraticas = course.transactions
-    .filter((item) => item.type === 'pratica')
-    .reduce((sum, item) => sum + item.amount, 0);
+    .filter((t) => t.type === 'pratica')
+    .reduce((sum, t) => sum + t.amount, 0);
 
   const totalPacientesModelo = course.transactions
-    .filter((item) => item.type === 'paciente_modelo')
-    .reduce((sum, item) => sum + item.amount, 0);
+    .filter((t) => t.type === 'paciente_modelo')
+    .reduce((sum, t) => sum + t.amount, 0);
 
   const totalCustos = course.transactions
-    .filter((item) => item.type === 'custo')
-    .reduce((sum, item) => sum + item.amount, 0);
+    .filter((t) => t.type === 'custo')
+    .reduce((sum, t) => sum + t.amount, 0);
 
   const totalEntradas = totalProfissionais + totalPraticas + totalPacientesModelo;
 
@@ -83,11 +67,8 @@ export default function CourseManagement() {
   const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth() + 1);
   const [records, setRecords] = useState<CourseRecord[]>([]);
-  const [courseCatalog, setCourseCatalog] = useState<CourseCatalogItem[]>([]);
 
-  const [selectedCatalogCourseId, setSelectedCatalogCourseId] = useState('');
-  const [newCourseNameInput, setNewCourseNameInput] = useState('');
-  const [newCatalogCourseName, setNewCatalogCourseName] = useState('');
+  const [newCourseName, setNewCourseName] = useState('');
   const [newCourseNotes, setNewCourseNotes] = useState('');
 
   const [selectedCourseId, setSelectedCourseId] = useState('');
@@ -110,10 +91,9 @@ export default function CourseManagement() {
       setLoadError('');
       const loaded = await loadCourseStorageData();
       setRecords(loaded.records);
-      setCourseCatalog(loaded.catalog);
     } catch (error) {
       console.error(error);
-      setLoadError('Nao foi possivel carregar os cursos salvos no servidor.');
+      setLoadError('Não foi possível carregar os cursos salvos no servidor.');
     }
   };
 
@@ -124,7 +104,7 @@ export default function CourseManagement() {
   const filteredCourses = useMemo(
     () =>
       records
-        .filter((course) => course.year === selectedYear && course.month === selectedMonth)
+        .filter((c) => c.year === selectedYear && c.month === selectedMonth)
         .sort((a, b) => a.courseName.localeCompare(b.courseName)),
     [records, selectedYear, selectedMonth]
   );
@@ -132,13 +112,13 @@ export default function CourseManagement() {
   const monthlySummary = useMemo(() => {
     return filteredCourses.reduce(
       (acc, course) => {
-        const summary = getCourseSummary(course);
-        acc.totalProfissionais += summary.totalProfissionais;
-        acc.totalPraticas += summary.totalPraticas;
-        acc.totalPacientesModelo += summary.totalPacientesModelo;
-        acc.totalEntradas += summary.totalEntradas;
-        acc.totalCustos += summary.totalCustos;
-        acc.resultadoLiquido += summary.resultadoLiquido;
+        const s = getCourseSummary(course);
+        acc.totalProfissionais += s.totalProfissionais;
+        acc.totalPraticas += s.totalPraticas;
+        acc.totalPacientesModelo += s.totalPacientesModelo;
+        acc.totalEntradas += s.totalEntradas;
+        acc.totalCustos += s.totalCustos;
+        acc.resultadoLiquido += s.resultadoLiquido;
         return acc;
       },
       {
@@ -161,23 +141,17 @@ export default function CourseManagement() {
 
   const handleAddCourse = async (e: FormEvent) => {
     e.preventDefault();
-
-    const selectedCatalogName = courseCatalog.find(
-      (item) => item.id === selectedCatalogCourseId
-    )?.name;
-
-    const typedName = newCourseNameInput.trim();
-    const courseName = selectedCatalogName || typedName;
+    const courseName = newCourseName.trim();
     if (!courseName) return;
 
-    const alreadyExistsInPeriod = records.some(
-      (course) =>
-        course.year === selectedYear &&
-        course.month === selectedMonth &&
-        course.courseName.toLowerCase() === courseName.toLowerCase()
+    const alreadyExists = records.some(
+      (c) =>
+        c.year === selectedYear &&
+        c.month === selectedMonth &&
+        c.courseName.toLowerCase() === courseName.toLowerCase()
     );
 
-    if (alreadyExistsInPeriod) {
+    if (alreadyExists) {
       window.alert(`O curso "${courseName}" já está cadastrado para este mês.`);
       return;
     }
@@ -199,77 +173,34 @@ export default function CourseManagement() {
       const updated = [...records, nextRecord];
       await saveCourseRecords(updated);
       await refreshData();
-      setSelectedCatalogCourseId('');
-      setNewCourseNameInput('');
+      setNewCourseName('');
       setNewCourseNotes('');
       setSelectedCourseId(nextRecord.id);
     } catch (error) {
       console.error(error);
-      window.alert('Nao foi possivel salvar o curso no servidor.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleAddCatalogCourse = async (e: FormEvent) => {
-    e.preventDefault();
-    const name = newCatalogCourseName.trim();
-    if (!name) return;
-
-    const exists = courseCatalog.some(
-      (item) => item.name.toLowerCase() === name.toLowerCase()
-    );
-    if (exists) {
-      window.alert('Esse curso já existe no catálogo.');
-      return;
-    }
-
-    const nextItem: CourseCatalogItem = {
-      id: crypto.randomUUID(),
-      name,
-      createdAt: new Date().toISOString(),
-    };
-
-    try {
-      setIsSaving(true);
-      const updatedCatalog = [...courseCatalog, nextItem].sort((a, b) =>
-        a.name.localeCompare(b.name)
-      );
-      await saveCourseCatalog(updatedCatalog);
-      await refreshData();
-      setSelectedCatalogCourseId(nextItem.id);
-      setNewCatalogCourseName('');
-    } catch (error) {
-      console.error(error);
-      window.alert('Nao foi possivel salvar o curso no catalogo.');
+      window.alert('Não foi possível salvar o curso no servidor.');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDeleteCourse = async (courseId: string) => {
-    const course = records.find((item) => item.id === courseId);
+    const course = records.find((c) => c.id === courseId);
     if (!course) return;
 
-    const shouldDelete = window.confirm(
-      `Deseja remover o curso "${course.courseName}" e todos os lançamentos?`
-    );
-    if (!shouldDelete) return;
+    if (!window.confirm(`Deseja remover o curso "${course.courseName}" e todos os lançamentos?`)) return;
 
     try {
       setIsSaving(true);
-      const updated = records.filter((item) => item.id !== courseId);
+      const updated = records.filter((c) => c.id !== courseId);
       await saveCourseRecords(updated);
       await refreshData();
+      if (selectedCourseId === courseId) setSelectedCourseId('');
     } catch (error) {
       console.error(error);
-      window.alert('Nao foi possivel excluir o curso.');
+      window.alert('Não foi possível excluir o curso.');
     } finally {
       setIsSaving(false);
-    }
-
-    if (selectedCourseId === courseId) {
-      setSelectedCourseId('');
     }
   };
 
@@ -285,7 +216,6 @@ export default function CourseManagement() {
       setIsSaving(true);
       const updated = records.map((course) => {
         if (course.id !== selectedCourseId) return course;
-
         return {
           ...course,
           updatedAt: now,
@@ -311,7 +241,7 @@ export default function CourseManagement() {
       setTransactionAmount('');
     } catch (error) {
       console.error(error);
-      window.alert('Nao foi possivel salvar o lancamento.');
+      window.alert('Não foi possível salvar o lançamento.');
     } finally {
       setIsSaving(false);
     }
@@ -353,13 +283,14 @@ export default function CourseManagement() {
           Gestão de Cursos
         </h2>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-          Controle de entradas, praticas, pacientes modelo, custos e relatorio mensal por curso.
+          Controle de entradas, práticas, pacientes modelo, custos e relatório mensal por curso.
         </p>
         {loadError && (
           <p className="mt-2 text-sm text-red-600 dark:text-red-400">{loadError}</p>
         )}
       </div>
 
+      {/* Filtros de período */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ano</label>
@@ -378,36 +309,24 @@ export default function CourseManagement() {
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
             {MONTHS.map((month, index) => (
-              <option key={month} value={index + 1}>
-                {month}
-              </option>
+              <option key={month} value={index + 1}>{month}</option>
             ))}
           </select>
         </div>
       </div>
 
+      {/* Cadastro e lançamento */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Cadastrar curso */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
             Cadastrar Curso no Mês
           </h3>
-          <form onSubmit={handleAddCourse} className="space-y-3 mb-5">
-            <select
-              value={selectedCatalogCourseId}
-              onChange={(e) => setSelectedCatalogCourseId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              <option value="">Selecione do catálogo (opcional)</option>
-              {courseCatalog.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.name}
-                </option>
-              ))}
-            </select>
+          <form onSubmit={handleAddCourse} className="space-y-3">
             <input
-              value={newCourseNameInput}
-              onChange={(e) => setNewCourseNameInput(e.target.value)}
-              placeholder="Ou digite nome para uso imediato"
+              value={newCourseName}
+              onChange={(e) => setNewCourseName(e.target.value)}
+              placeholder="Nome do curso"
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
             <textarea
@@ -422,32 +341,12 @@ export default function CourseManagement() {
               disabled={isSaving}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
             >
-              Adicionar Curso no Mês
+              Adicionar Curso
             </button>
           </form>
-
-          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Catálogo de cursos reutilizáveis
-            </p>
-            <form onSubmit={handleAddCatalogCourse} className="flex gap-2">
-              <input
-                value={newCatalogCourseName}
-                onChange={(e) => setNewCatalogCourseName(e.target.value)}
-                placeholder="Novo curso no catálogo"
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm"
-              >
-                Salvar
-              </button>
-            </form>
-          </div>
         </div>
 
+        {/* Lançar movimento */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Lançar Movimento</h3>
           <form onSubmit={handleAddTransaction} className="space-y-3">
@@ -458,9 +357,7 @@ export default function CourseManagement() {
             >
               <option value="">Selecione o curso</option>
               {filteredCourses.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.courseName}
-                </option>
+                <option key={course.id} value={course.id}>{course.courseName}</option>
               ))}
             </select>
             <select
@@ -513,6 +410,7 @@ export default function CourseManagement() {
         </div>
       </div>
 
+      {/* Totais do mês */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
           <p className="text-xs text-green-700 dark:text-green-300">Entradas Totais</p>
@@ -534,6 +432,7 @@ export default function CourseManagement() {
         </div>
       </div>
 
+      {/* Relatório por curso */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -559,10 +458,7 @@ export default function CourseManagement() {
           <div className="mb-4 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/40">
             <textarea
               value={importData}
-              onChange={(e) => {
-                setImportData(e.target.value);
-                setImportError('');
-              }}
+              onChange={(e) => { setImportData(e.target.value); setImportError(''); }}
               rows={5}
               placeholder="Cole aqui o JSON exportado de cursos..."
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-xs"
@@ -634,6 +530,7 @@ export default function CourseManagement() {
         )}
       </div>
 
+      {/* Detalhamento por curso */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredCourses.map((course) => (
           <div
@@ -648,24 +545,14 @@ export default function CourseManagement() {
                 {[...course.transactions]
                   .sort((a, b) => b.date.localeCompare(a.date))
                   .map((item) => (
-                    <div
-                      key={item.id}
-                      className="text-sm p-2 rounded border border-gray-200 dark:border-gray-700"
-                    >
+                    <div key={item.id} className="text-sm p-2 rounded border border-gray-200 dark:border-gray-700">
                       <p className="font-medium text-gray-900 dark:text-white">{item.description}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         {getTransactionLabel(item.type)} | {new Date(item.date).toLocaleDateString('pt-BR')}
                         {item.participantName ? ` | ${item.participantName}` : ''}
                       </p>
-                      <p
-                        className={`text-sm font-semibold ${
-                          item.type === 'custo'
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-green-600 dark:text-green-400'
-                        }`}
-                      >
-                        {item.type === 'custo' ? '-' : '+'}
-                        {formatCurrency(item.amount)}
+                      <p className={`text-sm font-semibold ${item.type === 'custo' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                        {item.type === 'custo' ? '-' : '+'}{formatCurrency(item.amount)}
                       </p>
                     </div>
                   ))}

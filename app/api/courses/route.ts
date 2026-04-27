@@ -1,3 +1,4 @@
+// v2 - redeploy fix
 import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { CourseStorageData } from '@/types/courses';
@@ -6,7 +7,6 @@ const COURSE_STORAGE_KEY = 'dashboard:courses:storage:v1';
 
 const EMPTY_DATA: CourseStorageData = {
   records: [],
-  catalog: [],
 };
 
 function normalizeData(raw: unknown): CourseStorageData {
@@ -17,7 +17,6 @@ function normalizeData(raw: unknown): CourseStorageData {
   const data = raw as Partial<CourseStorageData>;
   return {
     records: Array.isArray(data.records) ? data.records : [],
-    catalog: Array.isArray(data.catalog) ? data.catalog : [],
   };
 }
 

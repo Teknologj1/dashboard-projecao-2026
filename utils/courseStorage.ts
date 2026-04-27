@@ -1,25 +1,18 @@
-import { CourseCatalogItem, CourseRecord, CourseStorageData } from '@/types/courses';
-const COURSES_API_PATH = '/api/courses';
+import { CourseRecord, CourseStorageData } from '@/types/courses';
 
-export function loadCourseRecords(): CourseRecord[] {
-  // Mantido para compatibilidade; o fluxo principal agora usa backend.
-  return [];
-}
+const COURSES_API_PATH = '/api/courses';
 
 export async function loadCourseStorageData(): Promise<CourseStorageData> {
   const response = await fetch(COURSES_API_PATH, {
     method: 'GET',
     cache: 'no-store',
   });
-
   if (!response.ok) {
     throw new Error('Falha ao carregar dados de cursos');
   }
-
   const parsed = (await response.json()) as CourseStorageData;
   return {
     records: Array.isArray(parsed.records) ? parsed.records : [],
-    catalog: Array.isArray(parsed.catalog) ? parsed.catalog : [],
   };
 }
 
@@ -31,33 +24,17 @@ async function saveCourseStorageData(data: CourseStorageData): Promise<void> {
     },
     body: JSON.stringify(data),
   });
-
   if (!response.ok) {
     throw new Error('Falha ao salvar dados de cursos');
   }
 }
 
 export async function saveCourseRecords(records: CourseRecord[]): Promise<void> {
-  const current = await loadCourseStorageData();
-  await saveCourseStorageData({
-    records,
-    catalog: current.catalog,
-  });
-}
-
-export async function saveCourseCatalog(catalog: CourseCatalogItem[]): Promise<void> {
-  const current = await loadCourseStorageData();
-  await saveCourseStorageData({
-    records: current.records,
-    catalog,
-  });
+  await saveCourseStorageData({ records });
 }
 
 export async function clearCourseRecords(): Promise<void> {
-  await saveCourseStorageData({
-    records: [],
-    catalog: [],
-  });
+  await saveCourseStorageData({ records: [] });
 }
 
 export async function exportCourseRecords(): Promise<string> {
@@ -65,9 +42,8 @@ export async function exportCourseRecords(): Promise<string> {
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
-      version: '1.1',
+      version: '2.0',
       records: data.records,
-      catalog: data.catalog,
     },
     null,
     2
@@ -76,20 +52,11 @@ export async function exportCourseRecords(): Promise<string> {
 
 export async function importCourseRecords(rawData: string): Promise<boolean> {
   try {
-    const parsed = JSON.parse(rawData) as {
-      records?: CourseRecord[];
-      catalog?: CourseCatalogItem[];
-    };
+    const parsed = JSON.parse(rawData) as { records?: CourseRecord[] };
     if (!parsed?.records || !Array.isArray(parsed.records)) {
       return false;
     }
-
-    const payload: CourseStorageData = {
-      records: parsed.records,
-      catalog: Array.isArray(parsed.catalog) ? parsed.catalog : [],
-    };
-
-    await saveCourseStorageData(payload);
+    await saveCourseStorageData({ records: parsed.records });
     return true;
   } catch (error) {
     console.error('Erro ao importar dados dos cursos:', error);
