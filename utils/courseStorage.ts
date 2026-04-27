@@ -19,9 +19,7 @@ export async function loadCourseStorageData(): Promise<CourseStorageData> {
 async function saveCourseStorageData(data: CourseStorageData): Promise<void> {
   const response = await fetch(COURSES_API_PATH, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!response.ok) {
@@ -40,11 +38,7 @@ export async function clearCourseRecords(): Promise<void> {
 export async function exportCourseRecords(): Promise<string> {
   const data = await loadCourseStorageData();
   return JSON.stringify(
-    {
-      exportedAt: new Date().toISOString(),
-      version: '2.0',
-      records: data.records,
-    },
+    { exportedAt: new Date().toISOString(), version: '3.0', records: data.records },
     null,
     2
   );
@@ -53,9 +47,7 @@ export async function exportCourseRecords(): Promise<string> {
 export async function importCourseRecords(rawData: string): Promise<boolean> {
   try {
     const parsed = JSON.parse(rawData) as { records?: CourseRecord[] };
-    if (!parsed?.records || !Array.isArray(parsed.records)) {
-      return false;
-    }
+    if (!parsed?.records || !Array.isArray(parsed.records)) return false;
     await saveCourseStorageData({ records: parsed.records });
     return true;
   } catch (error) {
