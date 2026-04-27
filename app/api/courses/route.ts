@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { CourseStorageData } from '@/types/courses';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 const COURSE_STORAGE_KEY = 'dashboard:courses:storage:v1';
 
 const EMPTY_DATA: CourseStorageData = {
