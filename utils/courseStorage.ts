@@ -1,109 +1,67 @@
 import { CourseCatalogItem, CourseRecord, CourseStorageData } from '@/types/courses';
-
-const COURSES_STORAGE_KEY = 'dashboard_courses_records_v1';
-
-function dispatchCoursesUpdated() {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('coursesUpdated'));
-  }
-}
+const COURSES_API_PATH = '/api/courses';
 
 export function loadCourseRecords(): CourseRecord[] {
-  if (typeof window === 'undefined') return [];
+  // Mantido para compatibilidade; o fluxo principal agora usa backend.
+  return [];
+}
 
-  try {
-    const saved = localStorage.getItem(COURSES_STORAGE_KEY);
-    if (!saved) return [];
+export async function loadCourseStorageData(): Promise<CourseStorageData> {
+  const response = await fetch(COURSES_API_PATH, {
+    method: 'GET',
+    cache: 'no-store',
+  });
 
-    const parsed = JSON.parse(saved) as CourseRecord[];
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
-  } catch (error) {
-    console.error('Erro ao carregar dados dos cursos:', error);
-    return [];
+  if (!response.ok) {
+    throw new Error('Falha ao carregar dados de cursos');
+  }
+
+  const parsed = (await response.json()) as CourseStorageData;
+  return {
+    records: Array.isArray(parsed.records) ? parsed.records : [],
+    catalog: Array.isArray(parsed.catalog) ? parsed.catalog : [],
+  };
+}
+
+async function saveCourseStorageData(data: CourseStorageData): Promise<void> {
+  const response = await fetch(COURSES_API_PATH, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error('Falha ao salvar dados de cursos');
   }
 }
 
-export function loadCourseStorageData(): CourseStorageData {
-  if (typeof window === 'undefined') {
-    return { records: [], catalog: [] };
-  }
-
-  try {
-    const saved = localStorage.getItem(COURSES_STORAGE_KEY);
-    if (!saved) return { records: [], catalog: [] };
-
-    const parsed = JSON.parse(saved) as
-      | CourseStorageData
-      | CourseRecord[];
-
-    // Backward compatibility with old array-only format
-    if (Array.isArray(parsed)) {
-      const catalogFromRecords = Array.from(
-        new Set(parsed.map((record) => record.courseName.trim()).filter(Boolean))
-      ).map((name) => ({
-        id: crypto.randomUUID(),
-        name,
-        createdAt: new Date().toISOString(),
-      }));
-
-      return {
-        records: parsed,
-        catalog: catalogFromRecords,
-      };
-    }
-
-    return {
-      records: Array.isArray(parsed.records) ? parsed.records : [],
-      catalog: Array.isArray(parsed.catalog) ? parsed.catalog : [],
-    };
-  } catch (error) {
-    console.error('Erro ao carregar dados dos cursos:', error);
-    return { records: [], catalog: [] };
-  }
+export async function saveCourseRecords(records: CourseRecord[]): Promise<void> {
+  const current = await loadCourseStorageData();
+  await saveCourseStorageData({
+    records,
+    catalog: current.catalog,
+  });
 }
 
-export function saveCourseRecords(records: CourseRecord[]): void {
-  if (typeof window === 'undefined') return;
-
-  try {
-    const current = loadCourseStorageData();
-    const payload: CourseStorageData = {
-      records,
-      catalog: current.catalog,
-    };
-    localStorage.setItem(COURSES_STORAGE_KEY, JSON.stringify(payload));
-    dispatchCoursesUpdated();
-  } catch (error) {
-    console.error('Erro ao salvar dados dos cursos:', error);
-  }
+export async function saveCourseCatalog(catalog: CourseCatalogItem[]): Promise<void> {
+  const current = await loadCourseStorageData();
+  await saveCourseStorageData({
+    records: current.records,
+    catalog,
+  });
 }
 
-export function saveCourseCatalog(catalog: CourseCatalogItem[]): void {
-  if (typeof window === 'undefined') return;
-
-  try {
-    const current = loadCourseStorageData();
-    const payload: CourseStorageData = {
-      records: current.records,
-      catalog,
-    };
-    localStorage.setItem(COURSES_STORAGE_KEY, JSON.stringify(payload));
-    dispatchCoursesUpdated();
-  } catch (error) {
-    console.error('Erro ao salvar catálogo de cursos:', error);
-  }
+export async function clearCourseRecords(): Promise<void> {
+  await saveCourseStorageData({
+    records: [],
+    catalog: [],
+  });
 }
 
-export function clearCourseRecords(): void {
-  if (typeof window === 'undefined') return;
-
-  localStorage.removeItem(COURSES_STORAGE_KEY);
-  dispatchCoursesUpdated();
-}
-
-export function exportCourseRecords(): string {
-  const data = loadCourseStorageData();
+export async function exportCourseRecords(): Promise<string> {
+  const data = await loadCourseStorageData();
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
@@ -116,9 +74,7 @@ export function exportCourseRecords(): string {
   );
 }
 
-export function importCourseRecords(rawData: string): boolean {
-  if (typeof window === 'undefined') return false;
-
+export async function importCourseRecords(rawData: string): Promise<boolean> {
   try {
     const parsed = JSON.parse(rawData) as {
       records?: CourseRecord[];
@@ -133,8 +89,7 @@ export function importCourseRecords(rawData: string): boolean {
       catalog: Array.isArray(parsed.catalog) ? parsed.catalog : [],
     };
 
-    localStorage.setItem(COURSES_STORAGE_KEY, JSON.stringify(payload));
-    dispatchCoursesUpdated();
+    await saveCourseStorageData(payload);
     return true;
   } catch (error) {
     console.error('Erro ao importar dados dos cursos:', error);

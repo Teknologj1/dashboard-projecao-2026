@@ -102,16 +102,23 @@ export default function CourseManagement() {
   const [showImport, setShowImport] = useState(false);
   const [importData, setImportData] = useState('');
   const [importError, setImportError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
-  useEffect(() => {
-    const update = () => {
-      const loaded = loadCourseStorageData();
+  const refreshData = async () => {
+    try {
+      setLoadError('');
+      const loaded = await loadCourseStorageData();
       setRecords(loaded.records);
       setCourseCatalog(loaded.catalog);
-    };
-    update();
-    window.addEventListener('coursesUpdated', update);
-    return () => window.removeEventListener('coursesUpdated', update);
+    } catch (error) {
+      console.error(error);
+      setLoadError('Nao foi possivel carregar os cursos salvos no servidor.');
+    }
+  };
+
+  useEffect(() => {
+    refreshData();
   }, []);
 
   const filteredCourses = useMemo(
@@ -152,7 +159,7 @@ export default function CourseManagement() {
       minimumFractionDigits: 2,
     }).format(value);
 
-  const handleAddCourse = (e: FormEvent) => {
+  const handleAddCourse = async (e: FormEvent) => {
     e.preventDefault();
 
     const selectedCatalogName = courseCatalog.find(
@@ -187,16 +194,24 @@ export default function CourseManagement() {
       updatedAt: now,
     };
 
-    const updated = [...records, nextRecord];
-    saveCourseRecords(updated);
-    setRecords(updated);
-    setSelectedCatalogCourseId('');
-    setNewCourseNameInput('');
-    setNewCourseNotes('');
-    setSelectedCourseId(nextRecord.id);
+    try {
+      setIsSaving(true);
+      const updated = [...records, nextRecord];
+      await saveCourseRecords(updated);
+      await refreshData();
+      setSelectedCatalogCourseId('');
+      setNewCourseNameInput('');
+      setNewCourseNotes('');
+      setSelectedCourseId(nextRecord.id);
+    } catch (error) {
+      console.error(error);
+      window.alert('Nao foi possivel salvar o curso no servidor.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleAddCatalogCourse = (e: FormEvent) => {
+  const handleAddCatalogCourse = async (e: FormEvent) => {
     e.preventDefault();
     const name = newCatalogCourseName.trim();
     if (!name) return;
@@ -215,16 +230,24 @@ export default function CourseManagement() {
       createdAt: new Date().toISOString(),
     };
 
-    const updatedCatalog = [...courseCatalog, nextItem].sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
-    saveCourseCatalog(updatedCatalog);
-    setCourseCatalog(updatedCatalog);
-    setSelectedCatalogCourseId(nextItem.id);
-    setNewCatalogCourseName('');
+    try {
+      setIsSaving(true);
+      const updatedCatalog = [...courseCatalog, nextItem].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      );
+      await saveCourseCatalog(updatedCatalog);
+      await refreshData();
+      setSelectedCatalogCourseId(nextItem.id);
+      setNewCatalogCourseName('');
+    } catch (error) {
+      console.error(error);
+      window.alert('Nao foi possivel salvar o curso no catalogo.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDeleteCourse = (courseId: string) => {
+  const handleDeleteCourse = async (courseId: string) => {
     const course = records.find((item) => item.id === courseId);
     if (!course) return;
 
@@ -233,16 +256,24 @@ export default function CourseManagement() {
     );
     if (!shouldDelete) return;
 
-    const updated = records.filter((item) => item.id !== courseId);
-    saveCourseRecords(updated);
-    setRecords(updated);
+    try {
+      setIsSaving(true);
+      const updated = records.filter((item) => item.id !== courseId);
+      await saveCourseRecords(updated);
+      await refreshData();
+    } catch (error) {
+      console.error(error);
+      window.alert('Nao foi possivel excluir o curso.');
+    } finally {
+      setIsSaving(false);
+    }
 
     if (selectedCourseId === courseId) {
       setSelectedCourseId('');
     }
   };
 
-  const handleAddTransaction = (e: FormEvent) => {
+  const handleAddTransaction = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedCourseId || !transactionDescription.trim()) return;
 
@@ -250,36 +281,44 @@ export default function CourseManagement() {
     if (Number.isNaN(amount) || amount <= 0) return;
 
     const now = new Date().toISOString();
-    const updated = records.map((course) => {
-      if (course.id !== selectedCourseId) return course;
+    try {
+      setIsSaving(true);
+      const updated = records.map((course) => {
+        if (course.id !== selectedCourseId) return course;
 
-      return {
-        ...course,
-        updatedAt: now,
-        transactions: [
-          ...course.transactions,
-          {
-            id: crypto.randomUUID(),
-            type: transactionType,
-            description: transactionDescription.trim(),
-            participantName: transactionParticipant.trim() || undefined,
-            amount,
-            date: transactionDate,
-            createdAt: now,
-          },
-        ],
-      };
-    });
+        return {
+          ...course,
+          updatedAt: now,
+          transactions: [
+            ...course.transactions,
+            {
+              id: crypto.randomUUID(),
+              type: transactionType,
+              description: transactionDescription.trim(),
+              participantName: transactionParticipant.trim() || undefined,
+              amount,
+              date: transactionDate,
+              createdAt: now,
+            },
+          ],
+        };
+      });
 
-    saveCourseRecords(updated);
-    setRecords(updated);
-    setTransactionDescription('');
-    setTransactionParticipant('');
-    setTransactionAmount('');
+      await saveCourseRecords(updated);
+      await refreshData();
+      setTransactionDescription('');
+      setTransactionParticipant('');
+      setTransactionAmount('');
+    } catch (error) {
+      console.error(error);
+      window.alert('Nao foi possivel salvar o lancamento.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleExport = () => {
-    const data = exportCourseRecords();
+  const handleExport = async () => {
+    const data = await exportCourseRecords();
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -291,20 +330,18 @@ export default function CourseManagement() {
     URL.revokeObjectURL(url);
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
     setImportError('');
     if (!importData.trim()) {
       setImportError('Cole o JSON exportado para importar.');
       return;
     }
-    const success = importCourseRecords(importData);
+    const success = await importCourseRecords(importData);
     if (!success) {
       setImportError('Formato inválido para importação.');
       return;
     }
-    const loaded = loadCourseStorageData();
-    setRecords(loaded.records);
-    setCourseCatalog(loaded.catalog);
+    await refreshData();
     setImportData('');
     setShowImport(false);
   };
@@ -316,8 +353,11 @@ export default function CourseManagement() {
           Gestão de Cursos
         </h2>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-          Controle de entradas, práticas, pacientes modelo, custos e relatório mensal por curso.
+          Controle de entradas, praticas, pacientes modelo, custos e relatorio mensal por curso.
         </p>
+        {loadError && (
+          <p className="mt-2 text-sm text-red-600 dark:text-red-400">{loadError}</p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -379,6 +419,7 @@ export default function CourseManagement() {
             />
             <button
               type="submit"
+              disabled={isSaving}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
             >
               Adicionar Curso no Mês
@@ -398,6 +439,7 @@ export default function CourseManagement() {
               />
               <button
                 type="submit"
+                disabled={isSaving}
                 className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm"
               >
                 Salvar
@@ -462,6 +504,7 @@ export default function CourseManagement() {
             </div>
             <button
               type="submit"
+              disabled={isSaving}
               className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium"
             >
               Adicionar Lançamento
