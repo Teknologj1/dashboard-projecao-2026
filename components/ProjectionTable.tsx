@@ -20,12 +20,12 @@ export default function ProjectionTable({ projections }: ProjectionTableProps) {
   const totalLucro = projections.reduce((sum, p) => sum + p.lucro, 0);
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-      <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 sm:p-4 md:p-6 border border-gray-200 dark:border-gray-700">
+      <h2 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 md:mb-4 text-gray-900 dark:text-white">
         Projeção Detalhada 2026
       </h2>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
+      <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6">
+        <table className="w-full text-xs sm:text-sm text-left min-w-[600px]">
           <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
             <tr>
               <th className="px-4 py-3">Mês</th>

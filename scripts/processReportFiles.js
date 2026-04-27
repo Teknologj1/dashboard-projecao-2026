@@ -6,7 +6,11 @@ const path = require('path');
  * Processa todos os arquivos de relatório e gera dados consolidados
  */
 function processReportFiles() {
-  const dataDir = path.join(__dirname, '..', 'data');
+  const dataDir = path.join(__dirname, '..', 'data', 'Vendas');
+  if (!fs.existsSync(dataDir)) {
+    console.error(`❌ Pasta não encontrada: ${dataDir}`);
+    process.exit(1);
+  }
   const files = fs.readdirSync(dataDir).filter(f => f.endsWith('.xlsx') && f.includes('Relatorio_de_vendas'));
   
   console.log(`📊 Processando ${files.length} arquivos...\n`);

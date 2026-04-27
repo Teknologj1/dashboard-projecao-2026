@@ -83,12 +83,12 @@ export default function AnnualChart({
   chartData.sort((a, b) => a.year - b.year);
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-      <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 sm:p-4 md:p-6 border border-gray-200 dark:border-gray-700">
+      <h2 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 md:mb-4 text-gray-900 dark:text-white">
         Evolução Anual (2020-2026)
         {projection2026Perspectiva && ' - Comparação de Projeções'}
       </h2>
-      <ResponsiveContainer width="100%" height={400}>
+      <ResponsiveContainer width="100%" height={300} className="sm:h-[350px] md:h-[400px]">
         <BarChart data={chartData} margin={{ left: 10, right: 10, top: 10, bottom: 10 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
@@ -110,8 +110,9 @@ export default function AnnualChart({
             tickFormatter={formatCurrencyCompact}
             domain={[0, 'auto']}
             allowDecimals={false}
-            width={90}
-            tick={{ fontSize: 11 }}
+            width={70}
+            className="sm:w-[80px] md:w-[90px]"
+            tick={{ fontSize: 10 }}
           />
           <Tooltip 
             formatter={(value: number) => formatCurrency(value)}
@@ -149,10 +150,10 @@ export default function AnnualChart({
         </BarChart>
       </ResponsiveContainer>
       {projection2026Perspectiva && (
-        <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+        <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
           <div className="flex items-start gap-2">
-            <span className="text-blue-600 dark:text-blue-400 font-bold">ℹ️</span>
-            <div className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="text-blue-600 dark:text-blue-400 font-bold text-sm sm:text-base">ℹ️</span>
+            <div className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               <strong className="text-blue-900 dark:text-blue-200">Legenda:</strong>
               <ul className="mt-1 ml-4 list-disc space-y-1">
                 <li><strong>2026:</strong> Projeção Ideal (baseada na média dos últimos 3 anos)</li>

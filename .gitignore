@@ -30,6 +30,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Excel files (não versionar, apenas os dados processados)
+*.xlsx
+!arquivo de dados.xlsx
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -10,19 +10,19 @@ interface StatCardProps {
 
 export default function StatCard({ title, value, subtitle, trend }: StatCardProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-      <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-5 md:p-6 border border-gray-200 dark:border-gray-700">
+      <h3 className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 mb-1 sm:mb-2">
         {title}
       </h3>
-      <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
         {value}
       </p>
       {subtitle && (
-        <p className="text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>
+        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>
       )}
       {trend && (
         <p
-          className={`text-sm mt-2 ${
+          className={`text-xs sm:text-sm mt-1 sm:mt-2 ${
             trend.isPositive
               ? 'text-green-600 dark:text-green-400'
               : 'text-red-600 dark:text-red-400'

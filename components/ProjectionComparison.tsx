@@ -57,18 +57,18 @@ export default function ProjectionComparison({
   const diferencaLucro = lucroPerspectiva - lucroIdeal;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-      <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 sm:p-4 md:p-6 border border-gray-200 dark:border-gray-700">
+      <h2 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 md:mb-4 text-gray-900 dark:text-white">
         Comparação de Projeções 2026
       </h2>
       
       {/* Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-          <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-5 md:mb-6">
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 sm:p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+          <h3 className="text-sm sm:text-base font-semibold text-blue-900 dark:text-blue-300 mb-1 sm:mb-2">
             Projeção Ideal
           </h3>
-          <p className="text-sm text-blue-700 dark:text-blue-400">
+          <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-400">
             <strong>Receita Total:</strong> {formatCurrency(totalIdeal)}
           </p>
           <p className="text-sm text-blue-700 dark:text-blue-400">
@@ -78,11 +78,11 @@ export default function ProjectionComparison({
             <strong>Margem:</strong> {totalIdeal > 0 ? ((lucroIdeal / totalIdeal) * 100).toFixed(1) : '0'}%
           </p>
         </div>
-        <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-          <h3 className="font-semibold text-green-900 dark:text-green-300 mb-2">
+        <div className="bg-green-50 dark:bg-green-900/20 p-3 sm:p-4 rounded-lg border border-green-200 dark:border-green-800">
+          <h3 className="text-sm sm:text-base font-semibold text-green-900 dark:text-green-300 mb-1 sm:mb-2">
             Perspectiva 30%
           </h3>
-          <p className="text-sm text-green-700 dark:text-green-400">
+          <p className="text-xs sm:text-sm text-green-700 dark:text-green-400">
             <strong>Receita Total:</strong> {formatCurrency(totalPerspectiva)}
           </p>
           <p className="text-sm text-green-700 dark:text-green-400">
@@ -95,14 +95,14 @@ export default function ProjectionComparison({
       </div>
 
       {/* Diferença */}
-      <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg mb-6">
-        <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+      <div className="bg-gray-50 dark:bg-gray-700/50 p-3 sm:p-4 rounded-lg mb-4 sm:mb-5 md:mb-6">
+        <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
           Diferença (Perspectiva 30% vs Ideal)
         </h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4">
           <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Receita Adicional</p>
-            <p className="text-lg font-bold text-green-600 dark:text-green-400">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Receita Adicional</p>
+            <p className="text-base sm:text-lg font-bold text-green-600 dark:text-green-400">
               {formatCurrency(diferencaReceita)} (+{((diferencaReceita / totalIdeal) * 100).toFixed(1)}%)
             </p>
           </div>
@@ -120,7 +120,7 @@ export default function ProjectionComparison({
         <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
           Comparação Mensal - Receita
         </h3>
-        <ResponsiveContainer width="100%" height={400}>
+        <ResponsiveContainer width="100%" height={300} className="sm:h-[350px] md:h-[400px]">
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="month" />
@@ -152,7 +152,7 @@ export default function ProjectionComparison({
         <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
           Comparação Mensal - Lucro
         </h3>
-        <ResponsiveContainer width="100%" height={400}>
+        <ResponsiveContainer width="100%" height={300} className="sm:h-[350px] md:h-[400px]">
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="month" />

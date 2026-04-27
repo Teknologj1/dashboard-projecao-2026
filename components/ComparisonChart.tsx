@@ -168,11 +168,11 @@ export default function ComparisonChart({ state }: ComparisonChartProps) {
 
   if (comparisonData.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 sm:p-4 md:p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 md:mb-4">
           Comparação Temporal
         </h3>
-        <p className="text-gray-500 dark:text-gray-400">
+        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
           Selecione um nível no gráfico principal para ver a comparação
         </p>
       </div>
@@ -180,11 +180,11 @@ export default function ComparisonChart({ state }: ComparisonChartProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 sm:p-4 md:p-6 border border-gray-200 dark:border-gray-700">
+      <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 md:mb-4">
         Comparação Temporal
       </h3>
-      <ResponsiveContainer width="100%" height={350}>
+      <ResponsiveContainer width="100%" height={250} className="sm:h-[300px] md:h-[350px]">
         <ComposedChart data={comparisonData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
@@ -192,12 +192,13 @@ export default function ComparisonChart({ state }: ComparisonChartProps) {
             angle={-45}
             textAnchor="end"
             height={100}
-            tick={{ fontSize: 12 }}
+            tick={{ fontSize: 10 }}
           />
           <YAxis 
             tickFormatter={formatCurrencyCompact}
-            width={90}
-            tick={{ fontSize: 11 }}
+            width={70}
+            className="sm:w-[80px] md:w-[90px]"
+            tick={{ fontSize: 10 }}
           />
           <Tooltip 
             formatter={(value: number) => formatCurrency(value)}

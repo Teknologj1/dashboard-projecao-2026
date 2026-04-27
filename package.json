@@ -10,6 +10,7 @@
     "import-excel": "node scripts/importExcelData.js",
     "analyze-excel": "node scripts/analyzeExcel.js",
     "process-reports": "node scripts/processReportFiles.js",
+    "process-expenses": "node scripts/processExpenseFiles.js",
     "analyze-reports": "node scripts/analyzeReportFiles.js"
   },
   "dependencies": {

@@ -225,14 +225,14 @@ export default function DrillDownChart({ initialLevel = 'ano' }: DrillDownChartP
   const totalValue = filteredData.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 sm:p-4 md:p-6 border border-gray-200 dark:border-gray-700">
       {/* Header */}
-      <div className="mb-4 flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+      <div className="mb-3 sm:mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+        <div className="flex-1">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
             Análise de Vendas - Drill-Down
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
             Nível: {drillState.level.charAt(0).toUpperCase() + drillState.level.slice(1)}
             {totalValue > 0 && ` • Total: ${formatCurrency(totalValue)}`}
           </p>
@@ -240,13 +240,13 @@ export default function DrillDownChart({ initialLevel = 'ano' }: DrillDownChartP
         <div className="flex gap-2">
           <button
             onClick={() => setChartType('bar')}
-            className={`px-3 py-1 rounded ${chartType === 'bar' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+            className={`px-2 sm:px-3 py-1 text-xs sm:text-sm rounded ${chartType === 'bar' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
           >
             Barras
           </button>
           <button
             onClick={() => setChartType('pie')}
-            className={`px-3 py-1 rounded ${chartType === 'pie' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
+            className={`px-2 sm:px-3 py-1 text-xs sm:text-sm rounded ${chartType === 'pie' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}
           >
             Pizza
           </button>
@@ -257,8 +257,8 @@ export default function DrillDownChart({ initialLevel = 'ano' }: DrillDownChartP
       <BreadcrumbNav breadcrumbs={drillState.breadcrumbs} />
 
       {/* Chart */}
-      <div className="mt-6">
-        <ResponsiveContainer width="100%" height={450}>
+      <div className="mt-3 sm:mt-4 md:mt-6">
+        <ResponsiveContainer width="100%" height={300} className="sm:h-[350px] md:h-[400px] lg:h-[450px]">
           {chartType === 'bar' ? (
             <ComposedChart data={filteredData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -267,12 +267,14 @@ export default function DrillDownChart({ initialLevel = 'ano' }: DrillDownChartP
                 angle={drillState.level === 'ano' || drillState.level === 'mes' ? 0 : -45}
                 textAnchor={drillState.level === 'ano' || drillState.level === 'mes' ? 'middle' : 'end'}
                 height={drillState.level === 'ano' || drillState.level === 'mes' ? 30 : 100}
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: 10 }}
+                className="sm:text-[11px] md:text-[12px]"
               />
               <YAxis 
                 tickFormatter={formatCurrencyCompact}
-                width={90}
-                tick={{ fontSize: 11 }}
+                width={70}
+                className="sm:w-[80px] md:w-[90px]"
+                tick={{ fontSize: 10 }}
               />
               <Tooltip 
                 formatter={(value: number) => formatCurrency(value)}

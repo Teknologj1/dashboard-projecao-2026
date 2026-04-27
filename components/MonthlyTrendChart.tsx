@@ -57,18 +57,19 @@ export default function MonthlyTrendChart({
   });
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-      <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 sm:p-4 md:p-6 border border-gray-200 dark:border-gray-700">
+      <h2 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 md:mb-4 text-gray-900 dark:text-white">
         Tendência Mensal de Receita
       </h2>
-      <ResponsiveContainer width="100%" height={400}>
+      <ResponsiveContainer width="100%" height={300} className="sm:h-[350px] md:h-[400px]">
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="month" />
           <YAxis 
             tickFormatter={formatCurrencyCompact}
-            width={90}
-            tick={{ fontSize: 11 }}
+            width={70}
+            className="sm:w-[80px] md:w-[90px]"
+            tick={{ fontSize: 10 }}
           />
           <Tooltip formatter={(value: number) => formatCurrency(value)} />
           <Legend />
