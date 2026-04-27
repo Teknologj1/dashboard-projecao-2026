@@ -10,8 +10,8 @@ export interface CourseTransaction {
   description: string;
   participantName?: string;
   amount: number;
-  date: string; // ISO date
-  createdAt: string; // ISO datetime
+  date: string;
+  createdAt: string;
 }
 
 export interface CourseRecord {
@@ -20,18 +20,11 @@ export interface CourseRecord {
   year: number;
   month: number;
   notes?: string;
-  createdAt: string; // ISO datetime
-  updatedAt: string; // ISO datetime
+  createdAt: string;
+  updatedAt: string;
   transactions: CourseTransaction[];
-}
-
-export interface CourseCatalogItem {
-  id: string;
-  name: string;
-  createdAt: string; // ISO datetime
 }
 
 export interface CourseStorageData {
   records: CourseRecord[];
-  catalog: CourseCatalogItem[];
 }
