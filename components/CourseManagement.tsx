@@ -1,10 +1,11 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { CourseRecord, CourseTransactionType } from '@/types/courses';
+import { CourseCatalogItem, CourseRecord, CourseTransactionType } from '@/types/courses';
 import {
-  loadCourseRecords,
+  loadCourseStorageData,
   saveCourseRecords,
+  saveCourseCatalog,
   exportCourseRecords,
   importCourseRecords,
 } from '@/utils/courseStorage';
@@ -82,8 +83,11 @@ export default function CourseManagement() {
   const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth() + 1);
   const [records, setRecords] = useState<CourseRecord[]>([]);
+  const [courseCatalog, setCourseCatalog] = useState<CourseCatalogItem[]>([]);
 
-  const [newCourseName, setNewCourseName] = useState('');
+  const [selectedCatalogCourseId, setSelectedCatalogCourseId] = useState('');
+  const [newCourseNameInput, setNewCourseNameInput] = useState('');
+  const [newCatalogCourseName, setNewCatalogCourseName] = useState('');
   const [newCourseNotes, setNewCourseNotes] = useState('');
 
   const [selectedCourseId, setSelectedCourseId] = useState('');
@@ -100,7 +104,11 @@ export default function CourseManagement() {
   const [importError, setImportError] = useState('');
 
   useEffect(() => {
-    const update = () => setRecords(loadCourseRecords());
+    const update = () => {
+      const loaded = loadCourseStorageData();
+      setRecords(loaded.records);
+      setCourseCatalog(loaded.catalog);
+    };
     update();
     window.addEventListener('coursesUpdated', update);
     return () => window.removeEventListener('coursesUpdated', update);
@@ -146,12 +154,31 @@ export default function CourseManagement() {
 
   const handleAddCourse = (e: FormEvent) => {
     e.preventDefault();
-    if (!newCourseName.trim()) return;
+
+    const selectedCatalogName = courseCatalog.find(
+      (item) => item.id === selectedCatalogCourseId
+    )?.name;
+
+    const typedName = newCourseNameInput.trim();
+    const courseName = selectedCatalogName || typedName;
+    if (!courseName) return;
+
+    const alreadyExistsInPeriod = records.some(
+      (course) =>
+        course.year === selectedYear &&
+        course.month === selectedMonth &&
+        course.courseName.toLowerCase() === courseName.toLowerCase()
+    );
+
+    if (alreadyExistsInPeriod) {
+      window.alert(`O curso "${courseName}" já está cadastrado para este mês.`);
+      return;
+    }
 
     const now = new Date().toISOString();
     const nextRecord: CourseRecord = {
       id: crypto.randomUUID(),
-      courseName: newCourseName.trim(),
+      courseName,
       year: selectedYear,
       month: selectedMonth,
       notes: newCourseNotes.trim() || undefined,
@@ -163,9 +190,38 @@ export default function CourseManagement() {
     const updated = [...records, nextRecord];
     saveCourseRecords(updated);
     setRecords(updated);
-    setNewCourseName('');
+    setSelectedCatalogCourseId('');
+    setNewCourseNameInput('');
     setNewCourseNotes('');
     setSelectedCourseId(nextRecord.id);
+  };
+
+  const handleAddCatalogCourse = (e: FormEvent) => {
+    e.preventDefault();
+    const name = newCatalogCourseName.trim();
+    if (!name) return;
+
+    const exists = courseCatalog.some(
+      (item) => item.name.toLowerCase() === name.toLowerCase()
+    );
+    if (exists) {
+      window.alert('Esse curso já existe no catálogo.');
+      return;
+    }
+
+    const nextItem: CourseCatalogItem = {
+      id: crypto.randomUUID(),
+      name,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedCatalog = [...courseCatalog, nextItem].sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+    saveCourseCatalog(updatedCatalog);
+    setCourseCatalog(updatedCatalog);
+    setSelectedCatalogCourseId(nextItem.id);
+    setNewCatalogCourseName('');
   };
 
   const handleDeleteCourse = (courseId: string) => {
@@ -246,7 +302,9 @@ export default function CourseManagement() {
       setImportError('Formato inválido para importação.');
       return;
     }
-    setRecords(loadCourseRecords());
+    const loaded = loadCourseStorageData();
+    setRecords(loaded.records);
+    setCourseCatalog(loaded.catalog);
     setImportData('');
     setShowImport(false);
   };
@@ -290,12 +348,26 @@ export default function CourseManagement() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Novo Curso</h3>
-          <form onSubmit={handleAddCourse} className="space-y-3">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
+            Cadastrar Curso no Mês
+          </h3>
+          <form onSubmit={handleAddCourse} className="space-y-3 mb-5">
+            <select
+              value={selectedCatalogCourseId}
+              onChange={(e) => setSelectedCatalogCourseId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="">Selecione do catálogo (opcional)</option>
+              {courseCatalog.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.name}
+                </option>
+              ))}
+            </select>
             <input
-              value={newCourseName}
-              onChange={(e) => setNewCourseName(e.target.value)}
-              placeholder="Nome do curso"
+              value={newCourseNameInput}
+              onChange={(e) => setNewCourseNameInput(e.target.value)}
+              placeholder="Ou digite nome para uso imediato"
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
             <textarea
@@ -309,9 +381,29 @@ export default function CourseManagement() {
               type="submit"
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
             >
-              Adicionar Curso
+              Adicionar Curso no Mês
             </button>
           </form>
+
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Catálogo de cursos reutilizáveis
+            </p>
+            <form onSubmit={handleAddCatalogCourse} className="flex gap-2">
+              <input
+                value={newCatalogCourseName}
+                onChange={(e) => setNewCatalogCourseName(e.target.value)}
+                placeholder="Novo curso no catálogo"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+              <button
+                type="submit"
+                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm"
+              >
+                Salvar
+              </button>
+            </form>
+          </div>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700">

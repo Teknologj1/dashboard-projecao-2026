@@ -24,3 +24,14 @@ export interface CourseRecord {
   updatedAt: string; // ISO datetime
   transactions: CourseTransaction[];
 }
+
+export interface CourseCatalogItem {
+  id: string;
+  name: string;
+  createdAt: string; // ISO datetime
+}
+
+export interface CourseStorageData {
+  records: CourseRecord[];
+  catalog: CourseCatalogItem[];
+}
