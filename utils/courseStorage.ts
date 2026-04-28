@@ -1,54 +1,51 @@
 import { CourseRecord, CourseStorageData } from '@/types/courses';
 
-const COURSES_API_PATH = '/api/courses';
+const API = '/api/courses';
 
+// Carrega todos os registros
 export async function loadCourseStorageData(): Promise<CourseStorageData> {
-  const response = await fetch(COURSES_API_PATH, {
-    method: 'GET',
-    cache: 'no-store',
-  });
-  if (!response.ok) {
-    throw new Error('Falha ao carregar dados de cursos');
-  }
+  const response = await fetch(API, { method: 'GET', cache: 'no-store' });
+  if (!response.ok) throw new Error('Falha ao carregar dados de cursos');
   const parsed = (await response.json()) as CourseStorageData;
-  return {
-    records: Array.isArray(parsed.records) ? parsed.records : [],
-  };
+  return { records: Array.isArray(parsed.records) ? parsed.records : [] };
 }
 
-async function saveCourseStorageData(data: CourseStorageData): Promise<void> {
-  const response = await fetch(COURSES_API_PATH, {
-    method: 'PUT',
+// Salva ou atualiza um único curso (POST)
+export async function saveCourseRecord(record: CourseRecord): Promise<void> {
+  const response = await fetch(API, {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(record),
   });
-  if (!response.ok) {
-    throw new Error('Falha ao salvar dados de cursos');
-  }
+  if (!response.ok) throw new Error('Falha ao salvar curso');
 }
 
-export async function saveCourseRecords(records: CourseRecord[]): Promise<void> {
-  await saveCourseStorageData({ records });
+// Exclui um único curso pelo id (DELETE)
+export async function deleteCourseRecord(id: string): Promise<void> {
+  const response = await fetch(API, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  });
+  if (!response.ok) throw new Error('Falha ao excluir curso');
 }
 
-export async function clearCourseRecords(): Promise<void> {
-  await saveCourseStorageData({ records: [] });
-}
-
+// Exporta todos os registros como JSON
 export async function exportCourseRecords(): Promise<string> {
   const data = await loadCourseStorageData();
   return JSON.stringify(
-    { exportedAt: new Date().toISOString(), version: '3.0', records: data.records },
-    null,
-    2
+    { exportedAt: new Date().toISOString(), version: '4.0', records: data.records },
+    null, 2
   );
 }
 
+// Importa registros de um JSON exportado
 export async function importCourseRecords(rawData: string): Promise<boolean> {
   try {
     const parsed = JSON.parse(rawData) as { records?: CourseRecord[] };
     if (!parsed?.records || !Array.isArray(parsed.records)) return false;
-    await saveCourseStorageData({ records: parsed.records });
+
+    await Promise.all(parsed.records.map((r) => saveCourseRecord(r)));
     return true;
   } catch (error) {
     console.error('Erro ao importar dados dos cursos:', error);

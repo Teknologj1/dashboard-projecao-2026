@@ -1,4 +1,4 @@
-// v4 - supabase fixed
+// v5 - operações individuais por registro
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { CourseRecord } from '@/types/courses';
@@ -6,24 +6,21 @@ import { CourseRecord } from '@/types/courses';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
+// GET — carrega todos os registros
 export async function GET() {
   try {
-    console.log('URL:', process.env.SUPABASE_URL);
-    console.log('KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(-10));
-    
-    const { data, error, count } = await supabase
+    const supabase = getSupabase();
+    const { data, error } = await supabase
       .from('course_records')
-      .select('*', { count: 'exact' })
+      .select('*')
       .order('created_at', { ascending: true });
-
-    console.log('data:', JSON.stringify(data));
-    console.log('error:', JSON.stringify(error));
-    console.log('count:', count);
 
     if (error) throw error;
 
@@ -48,53 +45,57 @@ export async function GET() {
   }
 }
 
-export async function PUT(req: Request) {
+// POST — insere ou atualiza um único registro
+export async function POST(req: Request) {
   try {
-    const { records } = (await req.json()) as { records: CourseRecord[] };
+    const supabase = getSupabase();
+    const record = (await req.json()) as CourseRecord;
 
-    if (!Array.isArray(records)) {
-      return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
-    }
-
-    const { data: existing } = await supabase
+    const { error } = await supabase
       .from('course_records')
-      .select('id');
+      .upsert({
+        id: record.id,
+        course_name: record.courseName,
+        year: record.year,
+        month: record.month,
+        notes: record.notes ?? null,
+        transactions: record.transactions,
+        created_at: record.createdAt,
+        updated_at: record.updatedAt,
+      }, { onConflict: 'id' });
 
-    const existingIds = new Set((existing ?? []).map((r) => r.id));
-    const incomingIds = new Set(records.map((r) => r.id));
-
-    const toDelete = [...existingIds].filter((id) => !incomingIds.has(id));
-    if (toDelete.length > 0) {
-      const { error } = await supabase
-        .from('course_records')
-        .delete()
-        .in('id', toDelete);
-      if (error) throw error;
-    }
-
-    if (records.length > 0) {
-      const rows = records.map((r) => ({
-        id: r.id,
-        course_name: r.courseName,
-        year: r.year,
-        month: r.month,
-        notes: r.notes ?? null,
-        transactions: r.transactions,
-        created_at: r.createdAt,
-        updated_at: r.updatedAt,
-      }));
-
-      const { error } = await supabase
-        .from('course_records')
-        .upsert(rows, { onConflict: 'id' });
-      if (error) throw error;
-    }
-
+    if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('Erro ao salvar cursos:', error);
+    console.error('Erro ao salvar curso:', error);
     return NextResponse.json(
-      { error: 'Não foi possível salvar os dados de cursos.' },
+      { error: 'Não foi possível salvar o curso.' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE — remove um único registro pelo id
+export async function DELETE(req: Request) {
+  try {
+    const supabase = getSupabase();
+    const { id } = (await req.json()) as { id: string };
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID não fornecido.' }, { status: 400 });
+    }
+
+    const { error } = await supabase
+      .from('course_records')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error('Erro ao excluir curso:', error);
+    return NextResponse.json(
+      { error: 'Não foi possível excluir o curso.' },
       { status: 500 }
     );
   }

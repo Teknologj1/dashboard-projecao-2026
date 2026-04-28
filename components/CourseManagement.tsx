@@ -4,7 +4,8 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 're
 import { CourseRecord, CourseTransactionType } from '@/types/courses';
 import {
   loadCourseStorageData,
-  saveCourseRecords,
+  saveCourseRecord,
+  deleteCourseRecord,
   exportCourseRecords,
   importCourseRecords,
 } from '@/utils/courseStorage';
@@ -16,12 +17,7 @@ const MONTHS = [
 
 type ToastType = 'success' | 'error' | 'info';
 type Toast = { id: number; message: string; type: ToastType };
-
-type CourseSummary = {
-  totalEntradas: number;
-  totalCustos: number;
-  resultadoLiquido: number;
-};
+type CourseSummary = { totalEntradas: number; totalCustos: number; resultadoLiquido: number };
 
 function getTransactionLabel(type: CourseTransactionType): string {
   switch (type) {
@@ -34,16 +30,11 @@ function getTransactionLabel(type: CourseTransactionType): string {
 }
 
 function getCourseSummary(course: CourseRecord): CourseSummary {
-  const totalEntradas = course.transactions
-    .filter((t) => t.type !== 'custo')
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalCustos = course.transactions
-    .filter((t) => t.type === 'custo')
-    .reduce((sum, t) => sum + t.amount, 0);
+  const totalEntradas = course.transactions.filter((t) => t.type !== 'custo').reduce((s, t) => s + t.amount, 0);
+  const totalCustos = course.transactions.filter((t) => t.type === 'custo').reduce((s, t) => s + t.amount, 0);
   return { totalEntradas, totalCustos, resultadoLiquido: totalEntradas - totalCustos };
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
 function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: number) => void }) {
   const colors: Record<ToastType, string> = { success: 'bg-green-600', error: 'bg-red-600', info: 'bg-blue-600' };
   const icons: Record<ToastType, string> = { success: '✓', error: '✕', info: 'ℹ' };
@@ -60,26 +51,20 @@ function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: 
   );
 }
 
-// ── Confirm Dialog ────────────────────────────────────────────────────────────
 function ConfirmDialog({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 max-w-sm w-full mx-4 border border-gray-200 dark:border-gray-700">
         <p className="text-gray-900 dark:text-white text-sm mb-5">{message}</p>
         <div className="flex gap-3 justify-end">
-          <button onClick={onCancel} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
-            Cancelar
-          </button>
-          <button onClick={onConfirm} className="px-4 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium">
-            Confirmar exclusão
-          </button>
+          <button onClick={onCancel} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
+          <button onClick={onConfirm} className="px-4 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium">Confirmar exclusão</button>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
 export default function CourseManagement() {
   const currentDate = new Date();
   const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear());
@@ -118,13 +103,9 @@ export default function CourseManagement() {
 
   const confirm = (message: string): Promise<boolean> =>
     new Promise((resolve) => {
-      setConfirmDialog({
-        message,
-        onConfirm: () => { setConfirmDialog(null); resolve(true); },
-      });
+      setConfirmDialog({ message, onConfirm: () => { setConfirmDialog(null); resolve(true); } });
     });
 
-  // ── Busca sempre do servidor, sem cache local ──
   const refreshData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -140,17 +121,13 @@ export default function CourseManagement() {
   }, []);
 
   useEffect(() => { refreshData(); }, [refreshData]);
-
-  // Auto-refresh a cada 30s
   useEffect(() => {
     const interval = setInterval(() => refreshData(), 30000);
     return () => clearInterval(interval);
   }, [refreshData]);
 
   const filteredCourses = useMemo(
-    () => records
-      .filter((c) => c.year === selectedYear && c.month === selectedMonth)
-      .sort((a, b) => a.courseName.localeCompare(b.courseName)),
+    () => records.filter((c) => c.year === selectedYear && c.month === selectedMonth).sort((a, b) => a.courseName.localeCompare(b.courseName)),
     [records, selectedYear, selectedMonth]
   );
 
@@ -164,22 +141,19 @@ export default function CourseManagement() {
         return acc;
       },
       { totalEntradas: 0, totalCustos: 0, resultadoLiquido: 0 }
-    ),
-    [filteredCourses]
+    ), [filteredCourses]
   );
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }).format(value);
 
-  // ── Handlers — SEM atualização otimista, sempre refreshData após salvar ──
   const handleAddCourse = async (e: FormEvent) => {
     e.preventDefault();
     const courseName = newCourseName.trim();
     if (!courseName) return;
 
     const alreadyExists = records.some(
-      (c) => c.year === selectedYear && c.month === selectedMonth &&
-        c.courseName.toLowerCase() === courseName.toLowerCase()
+      (c) => c.year === selectedYear && c.month === selectedMonth && c.courseName.toLowerCase() === courseName.toLowerCase()
     );
     if (alreadyExists) { addToast(`O curso "${courseName}" já está cadastrado para este mês.`, 'error'); return; }
 
@@ -191,8 +165,8 @@ export default function CourseManagement() {
 
     try {
       setIsSavingCourse(true);
-      await saveCourseRecords([...records, nextRecord]);
-      await refreshData(); // busca do servidor após salvar
+      await saveCourseRecord(nextRecord); // POST individual
+      await refreshData();
       setNewCourseName('');
       setNewCourseNotes('');
       setSelectedCourseId(nextRecord.id);
@@ -211,7 +185,7 @@ export default function CourseManagement() {
     const confirmed = await confirm(`Deseja remover o curso "${course.courseName}" e todos os lançamentos?`);
     if (!confirmed) return;
     try {
-      await saveCourseRecords(records.filter((c) => c.id !== courseId));
+      await deleteCourseRecord(courseId); // DELETE individual
       await refreshData();
       if (selectedCourseId === courseId) setSelectedCourseId('');
       addToast(`Curso "${course.courseName}" removido.`, 'info');
@@ -227,23 +201,24 @@ export default function CourseManagement() {
     const amount = Number(transactionAmount.replace(',', '.'));
     if (Number.isNaN(amount) || amount <= 0) return;
 
+    const course = records.find((c) => c.id === selectedCourseId);
+    if (!course) return;
+
     const now = new Date().toISOString();
-    const updated = records.map((course) => {
-      if (course.id !== selectedCourseId) return course;
-      return {
-        ...course, updatedAt: now,
-        transactions: [...course.transactions, {
-          id: crypto.randomUUID(), type: transactionType,
-          description: transactionDescription.trim(),
-          participantName: transactionParticipant.trim() || undefined,
-          amount, date: transactionDate, createdAt: now,
-        }],
-      };
-    });
+    const updatedCourse: CourseRecord = {
+      ...course,
+      updatedAt: now,
+      transactions: [...course.transactions, {
+        id: crypto.randomUUID(), type: transactionType,
+        description: transactionDescription.trim(),
+        participantName: transactionParticipant.trim() || undefined,
+        amount, date: transactionDate, createdAt: now,
+      }],
+    };
 
     try {
       setIsSavingTransaction(true);
-      await saveCourseRecords(updated);
+      await saveCourseRecord(updatedCourse); // POST individual
       await refreshData();
       setTransactionDescription('');
       setTransactionParticipant('');
@@ -286,11 +261,7 @@ export default function CourseManagement() {
     <>
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       {confirmDialog && (
-        <ConfirmDialog
-          message={confirmDialog.message}
-          onConfirm={confirmDialog.onConfirm}
-          onCancel={() => setConfirmDialog(null)}
-        />
+        <ConfirmDialog message={confirmDialog.message} onConfirm={confirmDialog.onConfirm} onCancel={() => setConfirmDialog(null)} />
       )}
 
       <div className="space-y-6">
@@ -308,7 +279,6 @@ export default function CourseManagement() {
           {loadError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{loadError}</p>}
         </div>
 
-        {/* Filtros */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ano</label>
@@ -324,7 +294,6 @@ export default function CourseManagement() {
           </div>
         </div>
 
-        {/* Cadastro e lançamento */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Cadastrar Curso no Mês</h3>
@@ -373,7 +342,6 @@ export default function CourseManagement() {
           </div>
         </div>
 
-        {/* Totais */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
             <p className="text-xs text-green-700 dark:text-green-300">Entradas Totais</p>
@@ -389,7 +357,6 @@ export default function CourseManagement() {
           </div>
         </div>
 
-        {/* Relatório */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -455,7 +422,6 @@ export default function CourseManagement() {
           )}
         </div>
 
-        {/* Detalhamento */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredCourses.map((course) => (
             <div key={course.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700">
