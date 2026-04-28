@@ -13,10 +13,17 @@ const supabase = createClient(
 
 export async function GET() {
   try {
-    const { data, error } = await supabase
+    console.log('URL:', process.env.SUPABASE_URL);
+    console.log('KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(-10));
+    
+    const { data, error, count } = await supabase
       .from('course_records')
-      .select('*')
+      .select('*', { count: 'exact' })
       .order('created_at', { ascending: true });
+
+    console.log('data:', JSON.stringify(data));
+    console.log('error:', JSON.stringify(error));
+    console.log('count:', count);
 
     if (error) throw error;
 
@@ -39,8 +46,6 @@ export async function GET() {
       { status: 500 }
     );
   }
-console.log('URL:', process.env.SUPABASE_URL);
-console.log('KEY EXISTS:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
 export async function PUT(req: Request) {
