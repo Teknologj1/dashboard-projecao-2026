@@ -18,9 +18,6 @@ type ToastType = 'success' | 'error' | 'info';
 type Toast = { id: number; message: string; type: ToastType };
 
 type CourseSummary = {
-  totalProfissionais: number;
-  totalPraticas: number;
-  totalPacientesModelo: number;
   totalEntradas: number;
   totalCustos: number;
   resultadoLiquido: number;
@@ -37,12 +34,13 @@ function getTransactionLabel(type: CourseTransactionType): string {
 }
 
 function getCourseSummary(course: CourseRecord): CourseSummary {
-  const totalProfissionais = course.transactions.filter((t) => t.type === 'profissional').reduce((sum, t) => sum + t.amount, 0);
-  const totalPraticas = course.transactions.filter((t) => t.type === 'pratica').reduce((sum, t) => sum + t.amount, 0);
-  const totalPacientesModelo = course.transactions.filter((t) => t.type === 'paciente_modelo').reduce((sum, t) => sum + t.amount, 0);
-  const totalCustos = course.transactions.filter((t) => t.type === 'custo').reduce((sum, t) => sum + t.amount, 0);
-  const totalEntradas = totalProfissionais + totalPraticas + totalPacientesModelo;
-  return { totalProfissionais, totalPraticas, totalPacientesModelo, totalEntradas, totalCustos, resultadoLiquido: totalEntradas - totalCustos };
+  const totalEntradas = course.transactions
+    .filter((t) => t.type !== 'custo')
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalCustos = course.transactions
+    .filter((t) => t.type === 'custo')
+    .reduce((sum, t) => sum + t.amount, 0);
+  return { totalEntradas, totalCustos, resultadoLiquido: totalEntradas - totalCustos };
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -110,7 +108,6 @@ export default function CourseManagement() {
   const toastId = useRef(0);
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
-  // ── Toasts ──
   const addToast = useCallback((message: string, type: ToastType = 'success') => {
     const id = ++toastId.current;
     setToasts((prev) => [...prev, { id, message, type }]);
@@ -119,7 +116,6 @@ export default function CourseManagement() {
 
   const removeToast = useCallback((id: number) => setToasts((prev) => prev.filter((t) => t.id !== id)), []);
 
-  // ── Confirm ──
   const confirm = (message: string): Promise<boolean> =>
     new Promise((resolve) => {
       setConfirmDialog({
@@ -128,9 +124,9 @@ export default function CourseManagement() {
       });
     });
 
-  // ── Data ──
-  const refreshData = useCallback(async (silent = false) => {
-    if (!silent) setIsLoading(true);
+  // ── Busca sempre do servidor, sem cache local ──
+  const refreshData = useCallback(async () => {
+    setIsLoading(true);
     try {
       setLoadError('');
       const loaded = await loadCourseStorageData();
@@ -145,14 +141,16 @@ export default function CourseManagement() {
 
   useEffect(() => { refreshData(); }, [refreshData]);
 
-  // Auto-refresh a cada 30s para sincronizar entre dispositivos
+  // Auto-refresh a cada 30s
   useEffect(() => {
-    const interval = setInterval(() => refreshData(true), 30000);
+    const interval = setInterval(() => refreshData(), 30000);
     return () => clearInterval(interval);
   }, [refreshData]);
 
   const filteredCourses = useMemo(
-    () => records.filter((c) => c.year === selectedYear && c.month === selectedMonth).sort((a, b) => a.courseName.localeCompare(b.courseName)),
+    () => records
+      .filter((c) => c.year === selectedYear && c.month === selectedMonth)
+      .sort((a, b) => a.courseName.localeCompare(b.courseName)),
     [records, selectedYear, selectedMonth]
   );
 
@@ -160,15 +158,12 @@ export default function CourseManagement() {
     filteredCourses.reduce(
       (acc, course) => {
         const s = getCourseSummary(course);
-        acc.totalProfissionais += s.totalProfissionais;
-        acc.totalPraticas += s.totalPraticas;
-        acc.totalPacientesModelo += s.totalPacientesModelo;
         acc.totalEntradas += s.totalEntradas;
         acc.totalCustos += s.totalCustos;
         acc.resultadoLiquido += s.resultadoLiquido;
         return acc;
       },
-      { totalProfissionais: 0, totalPraticas: 0, totalPacientesModelo: 0, totalEntradas: 0, totalCustos: 0, resultadoLiquido: 0 } as CourseSummary
+      { totalEntradas: 0, totalCustos: 0, resultadoLiquido: 0 }
     ),
     [filteredCourses]
   );
@@ -176,14 +171,15 @@ export default function CourseManagement() {
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }).format(value);
 
-  // ── Handlers ──
+  // ── Handlers — SEM atualização otimista, sempre refreshData após salvar ──
   const handleAddCourse = async (e: FormEvent) => {
     e.preventDefault();
     const courseName = newCourseName.trim();
     if (!courseName) return;
 
     const alreadyExists = records.some(
-      (c) => c.year === selectedYear && c.month === selectedMonth && c.courseName.toLowerCase() === courseName.toLowerCase()
+      (c) => c.year === selectedYear && c.month === selectedMonth &&
+        c.courseName.toLowerCase() === courseName.toLowerCase()
     );
     if (alreadyExists) { addToast(`O curso "${courseName}" já está cadastrado para este mês.`, 'error'); return; }
 
@@ -195,16 +191,14 @@ export default function CourseManagement() {
 
     try {
       setIsSavingCourse(true);
-      const updated = [...records, nextRecord];
-      setRecords(updated); // otimista
-      await saveCourseRecords(updated);
+      await saveCourseRecords([...records, nextRecord]);
+      await refreshData(); // busca do servidor após salvar
       setNewCourseName('');
       setNewCourseNotes('');
       setSelectedCourseId(nextRecord.id);
       addToast(`Curso "${courseName}" adicionado com sucesso!`, 'success');
     } catch (error) {
       console.error(error);
-      await refreshData(true);
       addToast('Não foi possível salvar o curso no servidor.', 'error');
     } finally {
       setIsSavingCourse(false);
@@ -217,14 +211,12 @@ export default function CourseManagement() {
     const confirmed = await confirm(`Deseja remover o curso "${course.courseName}" e todos os lançamentos?`);
     if (!confirmed) return;
     try {
-      const updated = records.filter((c) => c.id !== courseId);
-      setRecords(updated); // otimista
-      await saveCourseRecords(updated);
+      await saveCourseRecords(records.filter((c) => c.id !== courseId));
+      await refreshData();
       if (selectedCourseId === courseId) setSelectedCourseId('');
       addToast(`Curso "${course.courseName}" removido.`, 'info');
     } catch (error) {
       console.error(error);
-      await refreshData(true);
       addToast('Não foi possível excluir o curso.', 'error');
     }
   };
@@ -236,29 +228,29 @@ export default function CourseManagement() {
     if (Number.isNaN(amount) || amount <= 0) return;
 
     const now = new Date().toISOString();
-    const newTransaction = {
-      id: crypto.randomUUID(), type: transactionType,
-      description: transactionDescription.trim(),
-      participantName: transactionParticipant.trim() || undefined,
-      amount, date: transactionDate, createdAt: now,
-    };
-
     const updated = records.map((course) => {
       if (course.id !== selectedCourseId) return course;
-      return { ...course, updatedAt: now, transactions: [...course.transactions, newTransaction] };
+      return {
+        ...course, updatedAt: now,
+        transactions: [...course.transactions, {
+          id: crypto.randomUUID(), type: transactionType,
+          description: transactionDescription.trim(),
+          participantName: transactionParticipant.trim() || undefined,
+          amount, date: transactionDate, createdAt: now,
+        }],
+      };
     });
 
     try {
       setIsSavingTransaction(true);
-      setRecords(updated); // otimista
       await saveCourseRecords(updated);
+      await refreshData();
       setTransactionDescription('');
       setTransactionParticipant('');
       setTransactionAmount('');
       addToast(`Lançamento adicionado! ${formatCurrency(amount)}`, 'success');
     } catch (error) {
       console.error(error);
-      await refreshData(true);
       addToast('Não foi possível salvar o lançamento.', 'error');
     } finally {
       setIsSavingTransaction(false);
@@ -290,7 +282,6 @@ export default function CourseManagement() {
     addToast('Dados importados com sucesso!', 'success');
   };
 
-  // ── Render ──
   return (
     <>
       <ToastContainer toasts={toasts} onRemove={removeToast} />
@@ -306,11 +297,8 @@ export default function CourseManagement() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Gestão de Cursos</h2>
-            <button
-              onClick={() => refreshData()}
-              disabled={isLoading}
-              className="text-sm px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-            >
+            <button onClick={() => refreshData()} disabled={isLoading}
+              className="text-sm px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50">
               {isLoading ? '⟳ Carregando...' : '⟳ Atualizar'}
             </button>
           </div>
