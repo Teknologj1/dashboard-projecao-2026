@@ -1,4 +1,4 @@
-// v3 - supabase
+// v4 - supabase fixed
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { CourseRecord } from '@/types/courses';
@@ -49,7 +49,6 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
     }
 
-    // Busca IDs existentes
     const { data: existing } = await supabase
       .from('course_records')
       .select('id');
@@ -57,7 +56,6 @@ export async function PUT(req: Request) {
     const existingIds = new Set((existing ?? []).map((r) => r.id));
     const incomingIds = new Set(records.map((r) => r.id));
 
-    // Deleta registros removidos
     const toDelete = [...existingIds].filter((id) => !incomingIds.has(id));
     if (toDelete.length > 0) {
       const { error } = await supabase
@@ -67,7 +65,6 @@ export async function PUT(req: Request) {
       if (error) throw error;
     }
 
-    // Upsert registros novos/atualizados
     if (records.length > 0) {
       const rows = records.map((r) => ({
         id: r.id,
