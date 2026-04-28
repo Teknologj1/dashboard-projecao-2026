@@ -39,6 +39,8 @@ export async function GET() {
       { status: 500 }
     );
   }
+console.log('URL:', process.env.SUPABASE_URL);
+console.log('KEY EXISTS:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
 export async function PUT(req: Request) {
