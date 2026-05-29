@@ -5,8 +5,8 @@ const API = '/api/courses';
 // Carrega todos os registros
 export async function loadCourseStorageData(): Promise<CourseStorageData> {
   const response = await fetch(API, { method: 'GET', cache: 'no-store' });
-  if (!response.ok) throw new Error('Falha ao carregar dados de cursos');
-  const parsed = (await response.json()) as CourseStorageData;
+  const parsed = (await response.json()) as CourseStorageData & { error?: string };
+  if (!response.ok) throw new Error(parsed?.error ?? 'Falha ao carregar dados de cursos');
   return { records: Array.isArray(parsed.records) ? parsed.records : [] };
 }
 

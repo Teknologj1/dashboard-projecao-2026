@@ -1,4 +1,4 @@
-// v5 - operações individuais por registro
+// v6 - diagnóstico de variáveis de ambiente
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { CourseRecord } from '@/types/courses';
@@ -7,10 +7,12 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 function getSupabase() {
-  return createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error(`Variáveis de ambiente ausentes: SUPABASE_URL=${url ? 'ok' : 'FALTANDO'}, SUPABASE_SERVICE_ROLE_KEY=${key ? 'ok' : 'FALTANDO'}`);
+  }
+  return createClient(url, key);
 }
 
 // GET — carrega todos os registros
@@ -37,9 +39,10 @@ export async function GET() {
 
     return NextResponse.json({ records });
   } catch (error) {
-    console.error('Erro ao carregar cursos:', error);
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('Erro ao carregar cursos:', msg);
     return NextResponse.json(
-      { error: 'Não foi possível carregar os dados de cursos.' },
+      { error: `Não foi possível carregar os dados de cursos. Detalhe: ${msg}` },
       { status: 500 }
     );
   }
