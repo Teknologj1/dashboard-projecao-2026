@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CourseRecord, CourseTransactionType } from '@/types/courses';
+import { CourseRecord, CourseTransaction, CourseTransactionType } from '@/types/courses';
 import {
   loadCourseStorageData,
   saveCourseRecord,
@@ -9,6 +9,11 @@ import {
   exportCourseRecords,
   importCourseRecords,
 } from '@/utils/courseStorage';
+
+type EditingTransaction = {
+  courseId: string;
+  transaction: CourseTransaction;
+};
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -92,6 +97,14 @@ export default function CourseManagement() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastId = useRef(0);
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
+
+  const [editingTransaction, setEditingTransaction] = useState<EditingTransaction | null>(null);
+  const [editType, setEditType] = useState<CourseTransactionType>('profissional');
+  const [editDescription, setEditDescription] = useState('');
+  const [editParticipant, setEditParticipant] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const addToast = useCallback((message: string, type: ToastType = 'success') => {
     const id = ++toastId.current;
@@ -232,6 +245,73 @@ export default function CourseManagement() {
     }
   };
 
+  const openEditTransaction = (courseId: string, transaction: CourseTransaction) => {
+    setEditingTransaction({ courseId, transaction });
+    setEditType(transaction.type);
+    setEditDescription(transaction.description);
+    setEditParticipant(transaction.participantName ?? '');
+    setEditAmount(String(transaction.amount));
+    setEditDate(transaction.date);
+  };
+
+  const handleSaveEditTransaction = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingTransaction) return;
+    const amount = Number(editAmount.replace(',', '.'));
+    if (Number.isNaN(amount) || amount <= 0) return;
+
+    const course = records.find((c) => c.id === editingTransaction.courseId);
+    if (!course) return;
+
+    const updatedCourse: CourseRecord = {
+      ...course,
+      updatedAt: new Date().toISOString(),
+      transactions: course.transactions.map((t) =>
+        t.id === editingTransaction.transaction.id
+          ? { ...t, type: editType, description: editDescription.trim(), participantName: editParticipant.trim() || undefined, amount, date: editDate }
+          : t
+      ),
+    };
+
+    try {
+      setIsSavingEdit(true);
+      await saveCourseRecord(updatedCourse);
+      await refreshData();
+      setEditingTransaction(null);
+      addToast('Lançamento atualizado!', 'success');
+    } catch (error) {
+      console.error(error);
+      addToast('Não foi possível salvar a edição.', 'error');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDeleteTransaction = async (courseId: string, transactionId: string) => {
+    const course = records.find((c) => c.id === courseId);
+    if (!course) return;
+    const tx = course.transactions.find((t) => t.id === transactionId);
+    if (!tx) return;
+
+    const confirmed = await confirm(`Excluir o lançamento "${tx.description}"?`);
+    if (!confirmed) return;
+
+    const updatedCourse: CourseRecord = {
+      ...course,
+      updatedAt: new Date().toISOString(),
+      transactions: course.transactions.filter((t) => t.id !== transactionId),
+    };
+
+    try {
+      await saveCourseRecord(updatedCourse);
+      await refreshData();
+      addToast('Lançamento excluído.', 'info');
+    } catch (error) {
+      console.error(error);
+      addToast('Não foi possível excluir o lançamento.', 'error');
+    }
+  };
+
   const handleExport = async () => {
     const data = await exportCourseRecords();
     const blob = new Blob([data], { type: 'application/json' });
@@ -262,6 +342,43 @@ export default function CourseManagement() {
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       {confirmDialog && (
         <ConfirmDialog message={confirmDialog.message} onConfirm={confirmDialog.onConfirm} onCancel={() => setConfirmDialog(null)} />
+      )}
+
+      {editingTransaction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 max-w-md w-full border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Editar Lançamento</h3>
+            <form onSubmit={handleSaveEditTransaction} className="space-y-3">
+              <select value={editType} onChange={(e) => setEditType(e.target.value as CourseTransactionType)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <option value="profissional">Entrada - Profissional</option>
+                <option value="pratica">Entrada - Prática</option>
+                <option value="paciente_modelo">Entrada - Paciente Modelo</option>
+                <option value="custo">Custo</option>
+              </select>
+              <input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Descrição" required
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <input value={editParticipant} onChange={(e) => setEditParticipant(e.target.value)} placeholder="Nome do participante/paciente (opcional)"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              <div className="grid grid-cols-2 gap-3">
+                <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} required
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                <input type="number" step="0.01" min="0" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} placeholder="Valor" required
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+              </div>
+              <div className="flex gap-3 justify-end pt-2">
+                <button type="button" onClick={() => setEditingTransaction(null)}
+                  className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={isSavingEdit || !editDescription.trim()}
+                  className="px-4 py-2 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium flex items-center gap-2">
+                  {isSavingEdit ? <><span className="animate-spin inline-block">⟳</span> Salvando...</> : 'Salvar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       <div className="space-y-6">
@@ -432,14 +549,28 @@ export default function CourseManagement() {
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                   {[...course.transactions].sort((a, b) => b.date.localeCompare(a.date)).map((item) => (
                     <div key={item.id} className="text-sm p-2 rounded border border-gray-200 dark:border-gray-700">
-                      <p className="font-medium text-gray-900 dark:text-white">{item.description}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {getTransactionLabel(item.type)} | {new Date(item.date).toLocaleDateString('pt-BR')}
-                        {item.participantName ? ` | ${item.participantName}` : ''}
-                      </p>
-                      <p className={`text-sm font-semibold ${item.type === 'custo' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                        {item.type === 'custo' ? '-' : '+'}{formatCurrency(item.amount)}
-                      </p>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 dark:text-white">{item.description}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {getTransactionLabel(item.type)} | {new Date(item.date).toLocaleDateString('pt-BR')}
+                            {item.participantName ? ` | ${item.participantName}` : ''}
+                          </p>
+                          <p className={`text-sm font-semibold ${item.type === 'custo' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                            {item.type === 'custo' ? '-' : '+'}{formatCurrency(item.amount)}
+                          </p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button onClick={() => openEditTransaction(course.id, item)}
+                            className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-800/60 text-blue-700 dark:text-blue-300 rounded">
+                            Editar
+                          </button>
+                          <button onClick={() => handleDeleteTransaction(course.id, item.id)}
+                            className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-800/60 text-red-700 dark:text-red-300 rounded">
+                            Excluir
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
